@@ -1,4 +1,4 @@
-local max_text_end = 71
+local max_text_end = 70
 local comment_col_end = 73
 local max_end_col = 81
 local comment_start = "/*"
@@ -142,6 +142,10 @@ function M.format_comment()
     -- Remove the comment suffix.
     new_line, _ = string.sub(new_line, 1, -#comment_end - 1)
 
+    -- Remove all trailing space now that delimeters
+    -- have been removed
+    new_line = vim.trim(new_line)
+
     table.insert(result, new_line)
   end
 
@@ -152,15 +156,14 @@ function M.format_comment()
   local textwidth = vim.api.nvim_buf_get_option(0, "textwidth")
 
   -- Reflow the text and account for the current indentation that
-  -- was removed
-  vim.api.nvim_buf_set_option(0, "textwidth", max_text_end - indent)
+  -- was removed. Also account for the mandatory space after the
+  -- first delimeter.
+  vim.api.nvim_buf_set_option(0, "textwidth", max_text_end - indent - 1)
 
   vim.api.nvim_feedkeys("gq", 'x', false)
 
   -- Restore the text width.
   vim.api.nvim_buf_set_option(0, "textwidth", textwidth)
-
-  do return end
 
   -- Select the text from the previous format.
   vim.api.nvim_feedkeys("'[V']", 'x', false)
