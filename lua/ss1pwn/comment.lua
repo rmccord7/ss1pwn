@@ -149,21 +149,35 @@ function M.format_normal_section(section_line_start, section_line_end)
   -- Update the lines in the buffer.
   vim.api.nvim_buf_set_lines(0, section_line_start-1, section_line_end, false, line_list)
 
-  -- Save the current text width option.
-  local textwidth = vim.api.nvim_buf_get_option(0, "textwidth")
-
   -- Visually select all lines in the comment section.
   vim.api.nvim_feedkeys(string.format("%dGV%dG", section_line_start, section_line_end) , 'n', false)
 
-  -- Reflow the text and account for the current indentation that
-  -- was removed. Also account for the mandatory space after the
-  -- first delimeter.
-  vim.api.nvim_buf_set_option(0, "textwidth", max_text_end - indent - #comment_start - 1)
+  -- Save options.
+  local textwidth   = vim.api.nvim_buf_get_option(0, "textwidth")
+  local smartindent = vim.api.nvim_buf_get_option(0, "smartindent")
+  local autoindent  = vim.api.nvim_buf_get_option(0, "autoindent")
+  local cindent     = vim.api.nvim_buf_get_option(0, "cindent")
+  local smarttab    = vim.api.nvim_get_option("smarttab")
+  local indentexpr  = vim.api.nvim_buf_get_option(0, "indentexpr")
 
+  -- Set options for reflowing text.
+  vim.api.nvim_buf_set_option(0, "textwidth", max_text_end - indent - #comment_start - 1)
+  vim.api.nvim_buf_set_option(0, "smartindent", false)
+  vim.api.nvim_buf_set_option(0, "autoindent", false)
+  vim.api.nvim_buf_set_option(0, "cindent", false)
+  vim.api.nvim_set_option("smarttab", false)
+  vim.api.nvim_buf_set_option(0, "indentexpr", "")
+
+  -- Reflow the text.
   vim.api.nvim_feedkeys("gq", 'x', false)
 
-  -- Restore the text width option.
+  -- Restore options.
   vim.api.nvim_buf_set_option(0, "textwidth", textwidth)
+  vim.api.nvim_buf_set_option(0, "smartindent", smartindent)
+  vim.api.nvim_buf_set_option(0, "autoindent", autoindent)
+  vim.api.nvim_buf_set_option(0, "cindent", cindent)
+  vim.api.nvim_set_option("smarttab", smarttab)
+  vim.api.nvim_buf_set_option(0, "indentexpr", indentexpr)
 
   -- Visually Select the all lines from the reflow. More lines may have been
   -- added, but we can quickly re-select them.
@@ -246,21 +260,35 @@ function M.format_note_section(section_line_start, section_line_end)
   -- Update the lines in the buffer.
   vim.api.nvim_buf_set_lines(0, section_line_start-1, section_line_end, false, line_list)
 
-  -- Save the current text width option.
-  local textwidth = vim.api.nvim_buf_get_option(0, "textwidth")
-
   -- Visually select all lines in the section.
   vim.api.nvim_feedkeys(string.format("%dGV%dG", section_line_start, section_line_end) , 'n', false)
 
-  -- Reflow the text and account for the current indentation that
-  -- was removed. Also account for the mandatory space after the
-  -- first delimeter and the space after the note prefix.
-  vim.api.nvim_buf_set_option(0, "textwidth", max_text_end - indent - #comment_start - #note_comment - 1 - 1)
+  -- Save options.
+  local textwidth   = vim.api.nvim_buf_get_option(0, "textwidth")
+  local smartindent = vim.api.nvim_buf_get_option(0, "smartindent")
+  local autoindent  = vim.api.nvim_buf_get_option(0, "autoindent")
+  local cindent     = vim.api.nvim_buf_get_option(0, "cindent")
+  local smarttab    = vim.api.nvim_get_option("smarttab")
+  local indentexpr  = vim.api.nvim_buf_get_option(0, "indentexpr")
 
+  -- Set options for reflowing text.
+  vim.api.nvim_buf_set_option(0, "textwidth", max_text_end - indent - #comment_start - #note_comment - 1 - 1)
+  vim.api.nvim_buf_set_option(0, "smartindent", false)
+  vim.api.nvim_buf_set_option(0, "autoindent", false)
+  vim.api.nvim_buf_set_option(0, "cindent", false)
+  vim.api.nvim_set_option("smarttab", false)
+  vim.api.nvim_buf_set_option(0, "indentexpr", "")
+
+  -- Reflow the text.
   vim.api.nvim_feedkeys("gq", 'x', false)
 
-  -- Restore the text width option.
+  -- Restore options.
   vim.api.nvim_buf_set_option(0, "textwidth", textwidth)
+  vim.api.nvim_buf_set_option(0, "smartindent", smartindent)
+  vim.api.nvim_buf_set_option(0, "autoindent", autoindent)
+  vim.api.nvim_buf_set_option(0, "cindent", cindent)
+  vim.api.nvim_set_option("smarttab", smarttab)
+  vim.api.nvim_buf_set_option(0, "indentexpr", indentexpr)
 
   -- Visually Select the all lines from the reflow. More lines may have been
   -- added, but we can quickly re-select them.
