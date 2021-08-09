@@ -29,7 +29,7 @@ function M.is_bad_comment(line)
   -- Find the offset of the comment end
   local line_col = string.find(line, comment_end)
 
-  if line_col > comment_col_end then
+  if line_col > comment_col_end or line_col < comment_col_end then
     return true
   else
     return false
