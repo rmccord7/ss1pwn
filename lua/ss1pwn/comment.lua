@@ -424,7 +424,7 @@ function M.format_comment()
         -- end is currently set to current line, which is the start of the new
         -- section.
         if current_section_end == section_line_end - 1 then
-          section_line_start = section_line_end + 1
+          section_line_start = section_line_end
         else
           section_line_start = current_section_end + 1
           section_line_end   = section_line_start
