@@ -379,11 +379,18 @@ function M.format_comment(selection)
             end
           end
 
+        end
+
+        -- If this is not the last line of the selection, then update the line
+        -- start and line end for the next section.
+        if index ~= #selection.comment.lines then
+
           -- Process the next section in the selection. The format functions
           -- already updated the section line end if additional lines were
           -- added to the section.
           section.line_start = section.line_end + 1
           section.line_end   = section.line_start
+
         end
 
       else
@@ -403,8 +410,7 @@ function M.format_comment(selection)
 
   end
 
-  -- Update the comment block line line end for the next comment
-  -- block.
+  -- Make sure the caller knows if the end of the comment block has changed.
   selection.comment.line_end = section.line_end
 
 end
@@ -434,7 +440,7 @@ function M.format_all_comments()
   -- will be formatted.
   selection.comment             = {}
   selection.comment.line_start  = selection.line_start
-  selection.comment.line_end    = selection.line_end
+  selection.comment.line_end    = selection.line_start
   selection.comment.bad_comment = false
 
   -- Neovim Lua currently only supports Lua 5.1.
@@ -464,58 +470,36 @@ function M.format_all_comments()
       -- comment block.
       if index ~= #selection.lines then
 
-        -- Start with the next line and find the last line for the comment
+        -- Start with the next line and find the last line of the comment
         -- block.
         local lines = {table.unpack(selection.lines, index + 1)}
 
         for index2, line2 in ipairs(lines) do
 
-          -- If the current line is a bad comment
-          if is_comment(line2) and is_bad_comment(line2) then
-            selection.comment.bad_comment = true
-          end
+          -- If the current line is a comment, then we have not found the end
+          -- of the comment block.
+          if is_comment(lines[index2]) then
 
-          -- If this is not the last line remaining in the selection.
-          if index2 ~= #lines then
+            -- If the current line is a bad comment, then we need to flag it, but
+            -- this not the end of the comment block so we need to continue
+            -- looking for the end of the comment block.
+            if is_bad_comment(line2) then
 
-            -- If the next line is a not comment, then we have found the end of
-            -- the comment block.
-            if not is_comment(lines[index2 + 1]) then
-
-              -- Mark the end of the current comment.
-              selection.comment.line_end = selection.comment.line_start + index2
-
-              -- Only format the comment block if we determined that it is a bad
-              -- comment.
-              if selection.comment.bad_comment then
-
-                -- Get the lines from the selection (API zero indexed).
-                selection.comment.lines = vim.api.nvim_buf_get_lines(0, selection.comment.line_start-1, selection.comment.line_end, false)
-
-                M.format_comment(selection)
-
-              end
-
-              index                        = index + index2
-              selection.comment.line_start = selection.comment.line_end
-
-              break
+              selection.comment.bad_comment = true
             end
+
+            -- Update the end of the comment block.
+            selection.comment.line_end = selection.comment.line_end + 1
+
           else
 
-            -- If the last line is a comment, then we have not found the end of
-            -- the comment block. Since this is the last line in the visual
-            -- selection, then we will mark this as the end of the comment block.
-            -- Any comments outside the visual selection will not be formatted
-            -- even if technically part of the comment block.
+            -- Store the current line end so that if additional lines are added
+            -- we can determine how many were added. The format_comment function
+            -- will update the line of the comment block if it changes.
+            local NewLineCount = selection.comment.line_end
 
-            -- TODO: Add support to go outside visual selection and find the end of comment block.
-
-            -- Mark the end of the current comment.
-            selection.comment.line_end = selection.comment.line_start + index2
-
-            -- Only format the comment block if we determined that it is a bad
-            -- comment.
+            -- Only format the comment block if we determined that it contains
+            -- a line that is a bad comment.
             if selection.comment.bad_comment then
 
               -- Get the lines from the selection (API zero indexed).
@@ -523,20 +507,59 @@ function M.format_all_comments()
 
               M.format_comment(selection)
 
+              -- Set the number of lines that were added after the comment
+              -- block was formatted.
+              NewLineCount = selection.comment.line_end - NewLineCount
+
             end
 
-            index                        = index + index2
-            selection.comment.line_start = selection.comment.line_end
+            -- Since we processed additional lines we need to update the main
+            -- loop to skip over lines that we already processed in the inner
+            -- loop.
+            index = index + index2
+
+            -- If there are more lines in the visual selection, then there may
+            -- be another comment block that needs to be formatted.
+            if index ~= #selection.lines then
+
+              -- Next comment block should start after the current line
+              -- (non-comment) that was just processed and marked the end of
+              -- the current comment block.
+              selection.comment.line_start = selection.comment.line_end + 2
+              selection.comment.line_end   = selection.comment.line_start
+            end
+
+            -- Continue processing lines in the visual selection.
+            break
+
           end
         end
+      else
+
+        -- The line end for the comment block has already been set to start for
+        -- this case.
+
+        -- Only format the comment block if we determined that it is a bad
+        -- comment.
+        if selection.comment.bad_comment then
+
+          -- Get the lines from the selection (API zero indexed).
+          selection.comment.lines = vim.api.nvim_buf_get_lines(0, selection.comment.line_start-1, selection.comment.line_end, false)
+
+          M.format_comment(selection)
+        end
       end
+
+    else
+
+      -- Keep incrementing the next line as the comment start until we find a
+      -- comment.
+      selection.comment.line_start = selection.comment.line_start + 1
+      selection.comment.line_end   = selection.comment.line_start
+
     end
 
-    -- Keep incrementing the next line as the comment start until we find a
-    -- comment.
-    selection.comment.line_start = selection.comment.line_start + 1
-
-    -- Get the next index.
+    -- Get the next line in the visual selection.
     index = index + 1
   end
 end
