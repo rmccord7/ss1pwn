@@ -3,7 +3,7 @@ local comment_delim_col_start = 73
 local comment_start = "/*"
 local comment_end = "*/"
 local note_comment = "* NOTE *"
-local note_comment_indent = #comment_start + 1 + #note_comment
+--local note_comment_indent = #comment_start + 1 + #note_comment
 
 local M = {}
 
@@ -35,38 +35,53 @@ local function is_bad_comment(line)
   end
 end
 
+-- Backup user options that will be modifed to perform proper text reflow.
+local function backup_options(options)
+
+  options.textwidth  = vim.api.nvim_buf_get_option(0, "textwidth")
+  options.smartindent = vim.api.nvim_buf_get_option(0, "smartindent")
+  options.autoindent  = vim.api.nvim_buf_get_option(0, "autoindent")
+  options.cindent     = vim.api.nvim_buf_get_option(0, "cindent")
+  options.smarttab    = vim.api.nvim_get_option("smarttab")
+  options.indentexpr  = vim.api.nvim_buf_get_option(0, "indentexpr")
+  options.formatexpr  = vim.api.nvim_buf_get_option(0, "formatexpr")
+
+  -- Set options for reflowing text.
+  --   Text width option depends on the current indent level and
+  --   whether we are formatting a normal or note comment
+  vim.api.nvim_buf_set_option(0, "smartindent", false)
+  vim.api.nvim_buf_set_option(0, "autoindent", false)
+  vim.api.nvim_buf_set_option(0, "cindent", false)
+  vim.api.nvim_set_option("smarttab", false)
+  vim.api.nvim_buf_set_option(0, "indentexpr", "")
+  vim.api.nvim_buf_set_option(0, "formatexpr", "")
+end
+
+-- Restore user options that will be modifed to perform proper text reflow.
+local function restore_options(options)
+
+  vim.api.nvim_buf_set_option(0, "textwidth", options.textwidth)
+  vim.api.nvim_buf_set_option(0, "smartindent", options.smartindent)
+  vim.api.nvim_buf_set_option(0, "autoindent", options.autoindent)
+  vim.api.nvim_buf_set_option(0, "cindent", options.cindent)
+  vim.api.nvim_set_option("smarttab", options.smarttab)
+  vim.api.nvim_buf_set_option(0, "indentexpr", options.indentexpr)
+  vim.api.nvim_buf_set_option(0, "formatexpr", options.formatexpr)
+
+end
+
 -- Reflows the text.
 local function reflow_text(line_start, line_end, text_width)
 
   -- Visually select all lines in the range.
   vim.api.nvim_feedkeys(string.format("%dGV%dG", line_start, line_end) , 'x', false)
 
-  -- Save options.
-  local textwidth  = vim.api.nvim_buf_get_option(0, "textwidth")
-  local smartindent = vim.api.nvim_buf_get_option(0, "smartindent")
-  local autoindent  = vim.api.nvim_buf_get_option(0, "autoindent")
-  local cindent     = vim.api.nvim_buf_get_option(0, "cindent")
-  local smarttab    = vim.api.nvim_get_option("smarttab")
-  local indentexpr  = vim.api.nvim_buf_get_option(0, "indentexpr")
-
-  -- Set options for reflowing text.
+  -- Text width option depends on the current indent level and
+  -- whether we are formatting a normal or note comment
   vim.api.nvim_buf_set_option(0, "textwidth", text_width)
-  vim.api.nvim_buf_set_option(0, "smartindent", false)
-  vim.api.nvim_buf_set_option(0, "autoindent", false)
-  vim.api.nvim_buf_set_option(0, "cindent", false)
-  vim.api.nvim_set_option("smarttab", false)
-  vim.api.nvim_buf_set_option(0, "indentexpr", "")
 
   -- Reflow the text.
   vim.api.nvim_feedkeys("gq", 'x', false)
-
-  -- Restore options.
-  vim.api.nvim_buf_set_option(0, "textwidth", textwidth)
-  vim.api.nvim_buf_set_option(0, "smartindent", smartindent)
-  vim.api.nvim_buf_set_option(0, "autoindent", autoindent)
-  vim.api.nvim_buf_set_option(0, "cindent", cindent)
-  vim.api.nvim_set_option("smarttab", smarttab)
-  vim.api.nvim_buf_set_option(0, "indentexpr", indentexpr)
 
   -- Visually Select the all lines from the reflow. More lines may have been
   -- added, but we can quickly re-select them.
@@ -75,7 +90,7 @@ local function reflow_text(line_start, line_end, text_width)
   -- If additional lines were added, then we need to update the last line of
   -- the section. This will be in ascending order order so we don't need to
   -- swap these.
-  line_end = vim.fn.getcurpos()[2]
+  line_end = unpack(vim.api.nvim_buf_get_mark(0, ']'))
 
   -- Clear the visual selection.
   vim.api.nvim_feedkeys(vim.api.nvim_eval('"\\<ESC>"'), 'x', false)
@@ -87,7 +102,6 @@ end
 -- Formats an ss1 normal comment section.
 local function format_normal_section(section)
 
-  local new_line
   local padding
 
   -- Save the indent level from the  current line.
@@ -96,6 +110,7 @@ local function format_normal_section(section)
 
   -- Remove indentation, comment delimiters, and trailing white space from all
   -- section lines.
+  local lines
   local new_line
   local line_list = {}
   for _, line in ipairs(section.lines) do
@@ -157,6 +172,7 @@ local function format_note_section(section)
 
   -- Remove indentation, comment delimiters, and trailing white space from all
   -- section lines.
+  local lines
   local line_list = {}
   for index, line in ipairs(section.lines) do
 
@@ -226,8 +242,8 @@ function M.next_bad_comment()
   local line_count                                = vim.api.nvim_buf_line_count(0)
 
   --Save the current cursor position.
-  local previous_line_number, previous_col_number = unpack(vim.api.nvim_win_get_cursor(0))
-  local current_line_number                       = previous_line_number
+  local previous_line_number, _ = unpack(vim.api.nvim_win_get_cursor(0))
+  local current_line_number     = previous_line_number
 
   -- If we have not reached eof.
   while current_line_number ~= line_count do
@@ -240,6 +256,7 @@ function M.next_bad_comment()
 
       --If this is a bad comment.
       if is_bad_comment(line) then
+
         -- Find the offset of the comment start. This offset is
         -- the actual comment string not the delimiter.
         local line_col = string.find(line, comment_start, 1, true) + #comment_start
@@ -270,6 +287,7 @@ function M.next_bad_comment()
 
         -- Find the end of the comment block.
         while line_end ~= line_count do
+
           -- Get the current line.
           line = vim.api.nvim_buf_get_lines(0, line_end-1, line_end, false)[1]
 
@@ -298,17 +316,28 @@ function M.next_bad_comment()
 end
 
 -- Formats an ss1 comment.
-function M.format_comment(selection)
+function M.format_comment(selection, options)
 
   -- Check if the caller defined the visual selection.
-  local next = next
-
   selection = selection or {}
+  options = options or {}
+
+  -- Backup user options.
+  local restore = false
+
+  if next(options) == nil then
+    backup_options(options)
+
+    -- Flag that we need to restore user options when
+    -- we are done.
+    restore = true
+  end
+
   if next(selection) == nil then
 
     -- Get the visual selection.
-    selection.line_start = vim.fn.getpos('v')[2]
-    selection.line_end   = vim.fn.getcurpos()[2]
+    selection.line_start = unpack(vim.api.nvim_buf_get_mark(0, '<'))
+    selection.line_end   = unpack(vim.api.nvim_buf_get_mark(0, '>'))
 
     -- Clear the visual selection.
     vim.api.nvim_feedkeys(vim.api.nvim_eval('"\\<ESC>"'), 'x', false)
@@ -413,15 +442,26 @@ function M.format_comment(selection)
   -- Make sure the caller knows if the end of the comment block has changed.
   selection.comment.line_end = section.line_end
 
+  -- If this was a command, then we need to restore
+  -- the user options.
+  if restore then
+    restore_options(options)
+  end
+
 end
 
 -- Formats all ss1 comments in the selection.
 function M.format_all_comments()
 
+  local selection
+  local options = {}
+
+  backup_options(options)
+
   -- Get the visual selection.
   selection            = {}
-  selection.line_start = vim.fn.getpos('v')[2]
-  selection.line_end   = vim.fn.getcurpos()[2]
+  selection.line_start = unpack(vim.api.nvim_buf_get_mark(0, '<'))
+  selection.line_end   = unpack(vim.api.nvim_buf_get_mark(0, '>'))
 
   -- Get the lines from the selection (API zero indexed).
   selection.lines = vim.api.nvim_buf_get_lines(0, selection.line_start-1, selection.line_end, false)
@@ -447,7 +487,8 @@ function M.format_all_comments()
   table.unpack = table.unpack or unpack
 
   -- Process the comment.
-  index = 1
+  local line
+  local index = 1
   while index <= #selection.lines do
 
     -- Get the current line.
@@ -505,7 +546,7 @@ function M.format_all_comments()
               -- Get the lines from the selection (API zero indexed).
               selection.comment.lines = vim.api.nvim_buf_get_lines(0, selection.comment.line_start-1, selection.comment.line_end, false)
 
-              M.format_comment(selection)
+              M.format_comment(selection, options)
 
               -- Set the number of lines that were added after the comment
               -- block was formatted.
@@ -546,7 +587,7 @@ function M.format_all_comments()
           -- Get the lines from the selection (API zero indexed).
           selection.comment.lines = vim.api.nvim_buf_get_lines(0, selection.comment.line_start-1, selection.comment.line_end, false)
 
-          M.format_comment(selection)
+          M.format_comment(selection, options)
         end
       end
 
@@ -562,6 +603,9 @@ function M.format_all_comments()
     -- Get the next line in the visual selection.
     index = index + 1
   end
+
+  -- Restore user options.
+  restore_options(options)
 end
 
 return M
