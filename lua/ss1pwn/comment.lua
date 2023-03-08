@@ -38,13 +38,14 @@ end
 -- Backup user options that will be modifed to perform proper text reflow.
 local function backup_options(options)
 
-    options.textwidth  = vim.api.nvim_buf_get_option(0, "textwidth")
-    options.smartindent = vim.api.nvim_buf_get_option(0, "smartindent")
-    options.autoindent  = vim.api.nvim_buf_get_option(0, "autoindent")
-    options.cindent     = vim.api.nvim_buf_get_option(0, "cindent")
-    options.smarttab    = vim.api.nvim_get_option("smarttab")
-    options.indentexpr  = vim.api.nvim_buf_get_option(0, "indentexpr")
-    options.formatexpr  = vim.api.nvim_buf_get_option(0, "formatexpr")
+    options.textwidth     = vim.api.nvim_buf_get_option(0, "textwidth")
+    options.smartindent   = vim.api.nvim_buf_get_option(0, "smartindent")
+    options.autoindent    = vim.api.nvim_buf_get_option(0, "autoindent")
+    options.cindent       = vim.api.nvim_buf_get_option(0, "cindent")
+    options.smarttab      = vim.api.nvim_get_option("smarttab")
+    options.indentexpr    = vim.api.nvim_buf_get_option(0, "indentexpr")
+    options.formatexpr    = vim.api.nvim_buf_get_option(0, "formatexpr")
+    options.formatoptions = vim.api.nvim_buf_get_option(0, "formatoptions")
 
     -- Set options for reflowing text.
     --   Text width option depends on the current indent level and
@@ -55,6 +56,7 @@ local function backup_options(options)
     vim.api.nvim_set_option("smarttab", false)
     vim.api.nvim_buf_set_option(0, "indentexpr", "")
     vim.api.nvim_buf_set_option(0, "formatexpr", "")
+    vim.api.nvim_buf_set_option(0, "formatoptions", "tcqj")
 end
 
 -- Restore user options that will be modifed to perform proper text reflow.
@@ -67,6 +69,7 @@ local function restore_options(options)
     vim.api.nvim_set_option("smarttab", options.smarttab)
     vim.api.nvim_buf_set_option(0, "indentexpr", options.indentexpr)
     vim.api.nvim_buf_set_option(0, "formatexpr", options.formatexpr)
+    vim.api.nvim_buf_set_option(0, "formatoptions", options.formatoptions)
 
 end
 
@@ -122,7 +125,7 @@ local function format_normal_section(section)
         new_line, _ = string.gsub(new_line, vim.pesc(comment_start) .. "%s?", "", 1)
 
         -- Remove the comment suffix.
-        new_line, _ = string.sub(new_line, 1, -#comment_end - 1)
+        new_line = string.sub(new_line, 1, -#comment_end - 1)
 
         -- Remove all trailing space now that delimeters
         -- have been removed
