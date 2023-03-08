@@ -9,335 +9,462 @@ local M = {}
 
 -- Checks if the current line is a ss1 style comment.
 local function is_comment(line)
-  -- Remove all whitespace from beginning and end of string.
-  line = vim.trim(line)
+    -- Remove all whitespace from beginning and end of string.
+    line = vim.trim(line)
 
-  -- Return true if the line begins with a comment. Otherwise false.
-  return line:sub(1, #comment_start) == comment_start
+    -- Return true if the line begins with a comment. Otherwise false.
+    return line:sub(1, #comment_start) == comment_start
 end
 
 -- Checks if the current line is a ss1 style note comment. ]]
 local function is_note_comment(line)
 
-  -- Return true if the line has the note prefix. Otherwise false.
-  return string.find(line, note_comment, 1, true)
+    -- Return true if the line has the note prefix. Otherwise false.
+    return string.find(line, note_comment, 1, true)
 end
 
 -- Checks if the current line of the current comment is malformatted.
 local function is_bad_comment(line)
-  -- Find the offset of the comment end
-  local line_col = string.find(line, comment_end)
+    -- Find the offset of the comment end
+    local line_col = string.find(line, comment_end)
 
-  if line_col > comment_delim_col_start or line_col < comment_delim_col_start then
-    return true
-  else
-    return false
-  end
+    if line_col > comment_delim_col_start or line_col < comment_delim_col_start then
+        return true
+    else
+        return false
+    end
 end
 
 -- Backup user options that will be modifed to perform proper text reflow.
 local function backup_options(options)
 
-  options.textwidth  = vim.api.nvim_buf_get_option(0, "textwidth")
-  options.smartindent = vim.api.nvim_buf_get_option(0, "smartindent")
-  options.autoindent  = vim.api.nvim_buf_get_option(0, "autoindent")
-  options.cindent     = vim.api.nvim_buf_get_option(0, "cindent")
-  options.smarttab    = vim.api.nvim_get_option("smarttab")
-  options.indentexpr  = vim.api.nvim_buf_get_option(0, "indentexpr")
-  options.formatexpr  = vim.api.nvim_buf_get_option(0, "formatexpr")
+    options.textwidth  = vim.api.nvim_buf_get_option(0, "textwidth")
+    options.smartindent = vim.api.nvim_buf_get_option(0, "smartindent")
+    options.autoindent  = vim.api.nvim_buf_get_option(0, "autoindent")
+    options.cindent     = vim.api.nvim_buf_get_option(0, "cindent")
+    options.smarttab    = vim.api.nvim_get_option("smarttab")
+    options.indentexpr  = vim.api.nvim_buf_get_option(0, "indentexpr")
+    options.formatexpr  = vim.api.nvim_buf_get_option(0, "formatexpr")
 
-  -- Set options for reflowing text.
-  --   Text width option depends on the current indent level and
-  --   whether we are formatting a normal or note comment
-  vim.api.nvim_buf_set_option(0, "smartindent", false)
-  vim.api.nvim_buf_set_option(0, "autoindent", false)
-  vim.api.nvim_buf_set_option(0, "cindent", false)
-  vim.api.nvim_set_option("smarttab", false)
-  vim.api.nvim_buf_set_option(0, "indentexpr", "")
-  vim.api.nvim_buf_set_option(0, "formatexpr", "")
+    -- Set options for reflowing text.
+    --   Text width option depends on the current indent level and
+    --   whether we are formatting a normal or note comment
+    vim.api.nvim_buf_set_option(0, "smartindent", false)
+    vim.api.nvim_buf_set_option(0, "autoindent", false)
+    vim.api.nvim_buf_set_option(0, "cindent", false)
+    vim.api.nvim_set_option("smarttab", false)
+    vim.api.nvim_buf_set_option(0, "indentexpr", "")
+    vim.api.nvim_buf_set_option(0, "formatexpr", "")
 end
 
 -- Restore user options that will be modifed to perform proper text reflow.
 local function restore_options(options)
 
-  vim.api.nvim_buf_set_option(0, "textwidth", options.textwidth)
-  vim.api.nvim_buf_set_option(0, "smartindent", options.smartindent)
-  vim.api.nvim_buf_set_option(0, "autoindent", options.autoindent)
-  vim.api.nvim_buf_set_option(0, "cindent", options.cindent)
-  vim.api.nvim_set_option("smarttab", options.smarttab)
-  vim.api.nvim_buf_set_option(0, "indentexpr", options.indentexpr)
-  vim.api.nvim_buf_set_option(0, "formatexpr", options.formatexpr)
+    vim.api.nvim_buf_set_option(0, "textwidth", options.textwidth)
+    vim.api.nvim_buf_set_option(0, "smartindent", options.smartindent)
+    vim.api.nvim_buf_set_option(0, "autoindent", options.autoindent)
+    vim.api.nvim_buf_set_option(0, "cindent", options.cindent)
+    vim.api.nvim_set_option("smarttab", options.smarttab)
+    vim.api.nvim_buf_set_option(0, "indentexpr", options.indentexpr)
+    vim.api.nvim_buf_set_option(0, "formatexpr", options.formatexpr)
 
 end
 
 -- Reflows the text.
 local function reflow_text(line_start, line_end, text_width)
 
-  -- Visually select all lines in the range.
-  vim.api.nvim_feedkeys(string.format("%dGV%dG", line_start, line_end) , 'x', false)
+    -- Visually select all lines in the range.
+    vim.api.nvim_feedkeys(string.format("%dGV%dG", line_start, line_end) , 'x', false)
 
-  -- Text width option depends on the current indent level and
-  -- whether we are formatting a normal or note comment
-  vim.api.nvim_buf_set_option(0, "textwidth", text_width)
+    -- Text width option depends on the current indent level and
+    -- whether we are formatting a normal or note comment
+    vim.api.nvim_buf_set_option(0, "textwidth", text_width)
 
-  -- Reflow the text.
-  vim.api.nvim_feedkeys("gq", 'x', false)
+    -- Reflow the text.
+    vim.api.nvim_feedkeys("gq", 'x', false)
 
-  -- Visually Select the all lines from the reflow. More lines may have been
-  -- added, but we can quickly re-select them.
-  vim.api.nvim_feedkeys("'[V']", 'x', false)
+    -- Visually Select the all lines from the reflow. More lines may have been
+    -- added, but we can quickly re-select them.
+    vim.api.nvim_feedkeys("'[V']", 'x', false)
 
-  -- If additional lines were added, then we need to update the last line of
-  -- the section. This will be in ascending order order so we don't need to
-  -- swap these.
-  line_end = unpack(vim.api.nvim_buf_get_mark(0, ']'))
+    -- If additional lines were added, then we need to update the last line of
+    -- the section. This will be in ascending order order so we don't need to
+    -- swap these.
+    line_end = unpack(vim.api.nvim_buf_get_mark(0, ']'))
 
-  -- Clear the visual selection.
-  vim.api.nvim_feedkeys(vim.api.nvim_eval('"\\<ESC>"'), 'x', false)
+    -- Clear the visual selection.
+    vim.api.nvim_feedkeys(vim.api.nvim_eval('"\\<ESC>"'), 'x', false)
 
-  -- Return the section line end so the caller knows if it changed.
-  return line_end
+    -- Return the section line end so the caller knows if it changed.
+    return line_end
 end
 
 -- Formats an ss1 normal comment section.
 local function format_normal_section(section)
 
-  local padding
+    local padding
 
-  -- Save the indent level from the  current line.
-  local indent        = string.find(section.lines[1], "%S") - 1
-  local indent_string = string.sub(section.lines[1], 1, indent)
+    -- Save the indent level from the  current line.
+    local indent        = string.find(section.lines[1], "%S") - 1
+    local indent_string = string.sub(section.lines[1], 1, indent)
 
-  -- Remove indentation, comment delimiters, and trailing white space from all
-  -- section lines.
-  local lines
-  local new_line
-  local line_list = {}
-  for _, line in ipairs(section.lines) do
+    -- Remove indentation, comment delimiters, and trailing white space from all
+    -- section lines.
+    local lines
+    local new_line
+    local line_list = {}
+    for _, line in ipairs(section.lines) do
 
-    -- Remove indent and trailing white space.
-    new_line = vim.trim(line)
+        -- Remove indent and trailing white space.
+        new_line = vim.trim(line)
 
-    -- Remove the comment prefix.
-    new_line, _ = string.gsub(new_line, vim.pesc(comment_start) .. "%s?", "", 1)
+        -- Remove the comment prefix.
+        new_line, _ = string.gsub(new_line, vim.pesc(comment_start) .. "%s?", "", 1)
 
-    -- Remove the comment suffix.
-    new_line, _ = string.sub(new_line, 1, -#comment_end - 1)
+        -- Remove the comment suffix.
+        new_line, _ = string.sub(new_line, 1, -#comment_end - 1)
 
-    -- Remove all trailing space now that delimeters
-    -- have been removed
-    new_line = vim.trim(new_line)
+        -- Remove all trailing space now that delimeters
+        -- have been removed
+        new_line = vim.trim(new_line)
 
-    -- Store the modified line.
-    table.insert(line_list, new_line)
-  end
+        -- Store the modified line.
+        table.insert(line_list, new_line)
+    end
 
-  -- Update the lines in the buffer (API zero indexed).
-  vim.api.nvim_buf_set_lines(0, section.line_start-1, section.line_end, false, line_list)
+    -- Update the lines in the buffer (API zero indexed).
+    vim.api.nvim_buf_set_lines(0, section.line_start-1, section.line_end, false, line_list)
 
-  -- Reflow the text block. This function will return the new section line end
-  -- if additional lines were added to the section due to the reflowing of the
-  -- text.
-  section.line_end = reflow_text(section.line_start, section.line_end, comment_col_max - indent - #comment_start - 1)
+    -- Reflow the text block. This function will return the new section line end
+    -- if additional lines were added to the section due to the reflowing of the
+    -- text.
+    section.line_end = reflow_text(section.line_start, section.line_end, comment_col_max - indent - #comment_start - 1)
 
-  -- Get the lines from the selection (API zero indexed).
-  lines = vim.api.nvim_buf_get_lines(0, section.line_start-1, section.line_end, false)
+    -- Get the lines from the selection (API zero indexed).
+    lines = vim.api.nvim_buf_get_lines(0, section.line_start-1, section.line_end, false)
 
-  -- Add comment delimeters back to the lines and return the update lines to
-  -- the caller.
-  section.updated_lines = {}
+    -- Add comment delimeters back to the lines and return the update lines to
+    -- the caller.
+    section.updated_lines = {}
 
-  for _, line in ipairs(lines) do
-    -- Calculate the padding till the end of line delimiter.
-    padding = comment_col_max - indent - #comment_start - 1 - #line
+    for _, line in ipairs(lines) do
+        -- Calculate the padding till the end of line delimiter.
+        padding = comment_col_max - indent - #comment_start - 1 - #line
 
-    -- Format the line.
-    new_line = indent_string .. comment_start .. ' ' .. line .. string.rep(' ', padding) .. comment_end
+        -- Format the line.
+        new_line = indent_string .. comment_start .. ' ' .. line .. string.rep(' ', padding) .. comment_end
 
-    -- Add the line to the list.
-    table.insert(section.updated_lines, new_line)
-  end
+        -- Add the line to the list.
+        table.insert(section.updated_lines, new_line)
+    end
 
 end
 
 -- Formats an ss1 note comment section.
 local function format_note_section(section)
 
-  local new_line
-  local padding
+    local new_line
+    local padding
 
-  -- Save the indent level from the  current line.
-  local indent        = string.find(section.lines[1], "%S") - 1
-  local indent_string = string.sub(section.lines[1], 1, indent)
+    -- Save the indent level from the  current line.
+    local indent        = string.find(section.lines[1], "%S") - 1
+    local indent_string = string.sub(section.lines[1], 1, indent)
 
-  -- Remove indentation, comment delimiters, and trailing white space from all
-  -- section lines.
-  local lines
-  local line_list = {}
-  for index, line in ipairs(section.lines) do
+    -- Remove indentation, comment delimiters, and trailing white space from all
+    -- section lines.
+    local lines
+    local line_list = {}
+    for index, line in ipairs(section.lines) do
 
-    -- Remove indent and trailing white space.
-    new_line = vim.trim(line)
+        -- Remove indent and trailing white space.
+        new_line = vim.trim(line)
 
-    -- Remove the comment prefix.
-    new_line, _ = string.gsub(new_line, vim.pesc(comment_start) .. "%s?", "", 1)
+        -- Remove the comment prefix.
+        new_line, _ = string.gsub(new_line, vim.pesc(comment_start) .. "%s?", "", 1)
 
-    -- Remove the note prefix.
-    if index == 1 then
-      --Extra space after the note prefix will be stripped below.
-      new_line, _ = string.gsub(new_line, vim.pesc(note_comment) .. "%s?", "", 1)
+        -- Remove the note prefix.
+        if index == 1 then
+            --Extra space after the note prefix will be stripped below.
+            new_line, _ = string.gsub(new_line, vim.pesc(note_comment) .. "%s?", "", 1)
+        end
+
+        -- Remove the comment suffix.
+        new_line, _ = string.sub(new_line, 1, -#comment_end - 1)
+
+        -- Remove all trailing space now that delimeters
+        -- have been removed
+        new_line = vim.trim(new_line)
+
+        -- Store the modified line.
+        table.insert(line_list, new_line)
     end
 
-    -- Remove the comment suffix.
-    new_line, _ = string.sub(new_line, 1, -#comment_end - 1)
+    -- Update the lines in the buffer.
+    vim.api.nvim_buf_set_lines(0, section.line_start-1, section.line_end, false, line_list)
 
-    -- Remove all trailing space now that delimeters
-    -- have been removed
-    new_line = vim.trim(new_line)
+    -- Reflow the text block. This function will return the new section line end
+    -- if additional lines were added to the section due to the reflowing of the
+    -- text.
+    section.line_end = reflow_text(section.line_start, section.line_end, comment_col_max - indent - #comment_start - #note_comment - 1 - 1)
 
-    -- Store the modified line.
-    table.insert(line_list, new_line)
-  end
+    -- Get the lines from the selection (API zero indexed).
+    lines = vim.api.nvim_buf_get_lines(0, section.line_start-1, section.line_end, false)
 
-  -- Update the lines in the buffer.
-  vim.api.nvim_buf_set_lines(0, section.line_start-1, section.line_end, false, line_list)
+    -- Add comment delimeters back to the lines and return the update lines to
+    -- the caller.
+    section.updated_lines = {}
 
-  -- Reflow the text block. This function will return the new section line end
-  -- if additional lines were added to the section due to the reflowing of the
-  -- text.
-  section.line_end = reflow_text(section.line_start, section.line_end, comment_col_max - indent - #comment_start - #note_comment - 1 - 1)
+    for index, line in ipairs(lines) do
 
-  -- Get the lines from the selection (API zero indexed).
-  lines = vim.api.nvim_buf_get_lines(0, section.line_start-1, section.line_end, false)
+        -- Calculate the padding till the end of line delimiter.
+        padding = comment_col_max - indent - #comment_start - 1 - #note_comment - 1 - #line
 
-  -- Add comment delimeters back to the lines and return the update lines to
-  -- the caller.
-  section.updated_lines = {}
+        -- If this is the first line, then we need to add back the note prefix.
+        if index == 1 then
 
-  for index, line in ipairs(lines) do
+            -- Format the line.
+            new_line = indent_string .. comment_start .. ' ' .. note_comment .. ' ' .. line .. string.rep(' ', padding) .. comment_end
+        else
 
-    -- Calculate the padding till the end of line delimiter.
-    padding = comment_col_max - indent - #comment_start - 1 - #note_comment - 1 - #line
+            -- Format the line.
+            new_line = indent_string .. comment_start .. string.rep(' ', #note_comment + 1) .. ' ' .. line .. string.rep(' ', padding) .. comment_end
+        end
 
-    -- If this is the first line, then we need to add back the note prefix.
-    if index == 1 then
-
-      -- Format the line.
-      new_line = indent_string .. comment_start .. ' ' .. note_comment .. ' ' .. line .. string.rep(' ', padding) .. comment_end
-    else
-
-      -- Format the line.
-      new_line = indent_string .. comment_start .. string.rep(' ', #note_comment + 1) .. ' ' .. line .. string.rep(' ', padding) .. comment_end
+        -- Add the line to the list.
+        table.insert(section.updated_lines, new_line)
     end
-
-    -- Add the line to the list.
-    table.insert(section.updated_lines, new_line)
-  end
 
 end
 
 -- Visually selects the next bad comment from the current line. If the current
 -- line is a bad comment, then that comment will be visually selected.
 function M.next_bad_comment()
-  local line_count                                = vim.api.nvim_buf_line_count(0)
+    local line_count                                = vim.api.nvim_buf_line_count(0)
 
-  --Save the current cursor position.
-  local previous_line_number, _ = unpack(vim.api.nvim_win_get_cursor(0))
-  local current_line_number     = previous_line_number
+    --Save the current cursor position.
+    local previous_line_number, _ = unpack(vim.api.nvim_win_get_cursor(0))
+    local current_line_number     = previous_line_number
 
-  -- If we have not reached eof.
-  while current_line_number ~= line_count do
+    -- If we have not reached eof.
+    while current_line_number ~= line_count do
 
-    --Get current line (API zero indexed).
-    local line = vim.api.nvim_buf_get_lines(0, current_line_number-1, current_line_number, false)[1]
+        --Get current line (API zero indexed).
+        local line = vim.api.nvim_buf_get_lines(0, current_line_number-1, current_line_number, false)[1]
 
-    --If the current line is a comment.
-    if is_comment(line) then
+        --If the current line is a comment.
+        if is_comment(line) then
 
-      --If this is a bad comment.
-      if is_bad_comment(line) then
+            --If this is a bad comment.
+            if is_bad_comment(line) then
 
-        -- Find the offset of the comment start. This offset is
-        -- the actual comment string not the delimiter.
-        local line_col = string.find(line, comment_start, 1, true) + #comment_start
+                -- Find the offset of the comment start. This offset is
+                -- the actual comment string not the delimiter.
+                local line_col = string.find(line, comment_start, 1, true) + #comment_start
 
-        -- Update the cursor position at beginning of the comment text.
-        vim.api.nvim_win_set_cursor(0, {current_line_number, line_col})
+                -- Update the cursor position at beginning of the comment text.
+                vim.api.nvim_win_set_cursor(0, {current_line_number, line_col})
 
-        -- Set starting and end line numbers for visually selecting
-        -- the comment block.
-        local line_start = current_line_number - 1
-        local line_end   = current_line_number + 1
+                -- Set starting and end line numbers for visually selecting
+                -- the comment block.
+                local line_start = current_line_number - 1
+                local line_end   = current_line_number + 1
 
-        -- Find the start of the comment block.
-        while line_start ~= 0 do
+                -- Find the start of the comment block.
+                while line_start ~= 0 do
 
-          -- Get the current line.
-          line = vim.api.nvim_buf_get_lines(0, line_start-1, line_start, false)[1]
+                    -- Get the current line.
+                    line = vim.api.nvim_buf_get_lines(0, line_start-1, line_start, false)[1]
 
-          -- If this line is not a comment, then the next line
-          -- is the start of the comment block.
-          if not is_comment(line) then
-            line_start = line_start + 1
-            break
-          end
+                    -- If this line is not a comment, then the next line
+                    -- is the start of the comment block.
+                    if not is_comment(line) then
+                        line_start = line_start + 1
+                        break
+                    end
 
-          line_start = line_start - 1;
+                    line_start = line_start - 1;
+                end
+
+                -- Find the end of the comment block.
+                while line_end ~= line_count do
+
+                    -- Get the current line.
+                    line = vim.api.nvim_buf_get_lines(0, line_end-1, line_end, false)[1]
+
+                    -- If this line is not a comment, then the previous line
+                    -- is the end of the comment block.
+                    if not is_comment(line) then
+                        line_end = line_end - 1
+                        break
+                    end
+
+                    line_end = line_end + 1;
+                end
+
+                -- Visually select the comment block
+                vim.api.nvim_feedkeys(string.format("%dGV%dG", line_start, line_end) , 'n', false)
+
+                break
+            end
         end
 
-        -- Find the end of the comment block.
-        while line_end ~= line_count do
+        --Get next line.
+        current_line_number = current_line_number + 1;
 
-          -- Get the current line.
-          line = vim.api.nvim_buf_get_lines(0, line_end-1, line_end, false)[1]
-
-          -- If this line is not a comment, then the previous line
-          -- is the end of the comment block.
-          if not is_comment(line) then
-            line_end = line_end - 1
-            break
-          end
-
-          line_end = line_end + 1;
-        end
-
-        -- Visually select the comment block
-        vim.api.nvim_feedkeys(string.format("%dGV%dG", line_start, line_end) , 'n', false)
-
-        break
-      end
     end
-
-    --Get next line.
-    current_line_number = current_line_number + 1;
-
-  end
 
 end
 
 -- Formats an ss1 comment.
 function M.format_comment(selection, options)
 
-  -- Check if the caller defined the visual selection.
-  selection = selection or {}
-  options = options or {}
+    -- Check if the caller defined the visual selection.
+    selection = selection or {}
+    options = options or {}
 
-  -- Backup user options.
-  local restore = false
+    -- Backup user options.
+    local restore = false
 
-  if next(options) == nil then
+    if next(options) == nil then
+        backup_options(options)
+
+        -- Flag that we need to restore user options when
+        -- we are done.
+        restore = true
+    end
+
+    if next(selection) == nil then
+
+        -- Get the visual selection.
+        selection.line_start = unpack(vim.api.nvim_buf_get_mark(0, '<'))
+        selection.line_end   = unpack(vim.api.nvim_buf_get_mark(0, '>'))
+
+        -- Clear the visual selection.
+        vim.api.nvim_feedkeys(vim.api.nvim_eval('"\\<ESC>"'), 'x', false)
+
+        -- If the visual selection start is not in order of
+        -- increasing line order swap them. This may happen if
+        -- the user explicitly made the visual selection.
+        if selection.line_start > selection.line_end then
+            selection.line_start, selection.line_end = selection.line_end, selection.line_start
+        end
+
+        -- Get the lines from the selection (API zero indexed).
+        selection.comment            = {}
+        selection.comment.line_start = selection.line_start
+        selection.comment.line_end   = selection.line_end
+        selection.comment.lines      = vim.api.nvim_buf_get_lines(0, selection.line_start-1, selection.line_end, false)
+    end
+
+    -- Initialize the normal section that is going to be formatted. The comment
+    -- section line end will be updated for each line until we find the end of
+    -- the normal section. Note sections may follow the normal section and will
+    -- follow the same process.
+    local section         = {}
+    section.line_start    = selection.comment.line_start
+    section.line_end      = section.line_start
+    section.updated_lines = {}
+    section.note_section  = false
+
+    -- Process the comment.
+    for index, line in ipairs(selection.comment.lines) do
+
+        -- If the current line is a comment.
+        if is_comment(line) then
+
+            -- Determine if we have reached the end of a section.  This will be the
+            -- case if the current line is the last line, the next line is the start
+            -- of a note section.
+            if index == #selection.comment.lines or is_note_comment(selection.comment.lines[index+1]) then
+
+                -- Get the lines for the section (API zero indexed).
+                section.lines = vim.api.nvim_buf_get_lines(0, section.line_start-1, section.line_end, false)
+
+                -- Format the current section.
+                if section.note_section then
+                    format_note_section(section)
+                else
+                    format_normal_section(section)
+                end
+
+                -- Update the buffer with the formatted lines. Any additional lines
+                -- that were added due to text reflow will be inserted before the start
+                -- of the next section. The current section line end has also been
+                -- updated to reflect the additional lines that were added to the
+                -- section.
+                vim.api.nvim_buf_set_lines(0, section.line_start-1, section.line_end, false, section.updated_lines)
+
+                -- If this isn't the last line in the selection.
+                if index ~= #selection.comment.lines then
+
+                    -- If we are still processing the normal section.
+                    if not section.note_section then
+
+                        -- If the next section is a note section.
+                        if is_note_comment(selection.comment.lines[index+1]) then
+
+                            -- Flag that additional sections are note sections.
+                            section.note_section = true
+                        end
+                    end
+
+                end
+
+                -- If this is not the last line of the selection, then update the line
+                -- start and line end for the next section.
+                if index ~= #selection.comment.lines then
+
+                    -- Process the next section in the selection. The format functions
+                    -- already updated the section line end if additional lines were
+                    -- added to the section.
+                    section.line_start = section.line_end + 1
+                    section.line_end   = section.line_start
+
+                end
+
+            else
+
+                -- Process the next line as part of the current section.
+                section.line_end = section.line_end + 1
+
+            end
+
+        else
+
+            -- Found a line in the selection that is not a comment we will terminate
+            -- and not process the current section.  Any previous sections that were
+            -- formatted up to this point will remain formatted.
+            break
+        end
+
+    end
+
+    -- Make sure the caller knows if the end of the comment block has changed.
+    selection.comment.line_end = section.line_end
+
+    -- If this was a command, then we need to restore
+    -- the user options.
+    if restore then
+        restore_options(options)
+    end
+
+end
+
+-- Formats all ss1 comments in the selection.
+function M.format_all_comments()
+
+    local selection
+    local options = {}
+
     backup_options(options)
 
-    -- Flag that we need to restore user options when
-    -- we are done.
-    restore = true
-  end
-
-  if next(selection) == nil then
-
     -- Get the visual selection.
+    selection            = {}
     selection.line_start = unpack(vim.api.nvim_buf_get_mark(0, '<'))
     selection.line_end   = unpack(vim.api.nvim_buf_get_mark(0, '>'))
+
+    -- Get the lines from the selection (API zero indexed).
+    selection.lines = vim.api.nvim_buf_get_lines(0, selection.line_start-1, selection.line_end, false)
 
     -- Clear the visual selection.
     vim.api.nvim_feedkeys(vim.api.nvim_eval('"\\<ESC>"'), 'x', false)
@@ -346,266 +473,139 @@ function M.format_comment(selection, options)
     -- increasing line order swap them. This may happen if
     -- the user explicitly made the visual selection.
     if selection.line_start > selection.line_end then
-      selection.line_start, selection.line_end = selection.line_end, selection.line_start
+        selection.line_start, selection.line_end = selection.line_end, selection.line_start
     end
 
-    -- Get the lines from the selection (API zero indexed).
-    selection.comment            = {}
-    selection.comment.line_start = selection.line_start
-    selection.comment.line_end   = selection.line_end
-    selection.comment.lines      = vim.api.nvim_buf_get_lines(0, selection.line_start-1, selection.line_end, false)
-  end
+    -- If this function is called, then the selection is the only comment that
+    -- will be formatted.
+    selection.comment             = {}
+    selection.comment.line_start  = selection.line_start
+    selection.comment.line_end    = selection.line_start
+    selection.comment.bad_comment = false
 
-  -- Initialize the normal section that is going to be formatted. The comment
-  -- section line end will be updated for each line until we find the end of
-  -- the normal section. Note sections may follow the normal section and will
-  -- follow the same process.
-  local section         = {}
-  section.line_start    = selection.comment.line_start
-  section.line_end      = section.line_start
-  section.updated_lines = {}
-  section.note_section  = false
+    -- Neovim Lua currently only supports Lua 5.1.
+    table.unpack = table.unpack or unpack
 
-  -- Process the comment.
-  for index, line in ipairs(selection.comment.lines) do
+    -- Process the comment.
+    local line
+    local index = 1
+    while index <= #selection.lines do
 
-    -- If the current line is a comment.
-    if is_comment(line) then
+        -- Get the current line.
+        line = selection.lines[index]
 
-      -- Determine if we have reached the end of a section.  This will be the
-      -- case if the current line is the last line, the next line is the start
-      -- of a note section.
-      if index == #selection.comment.lines or is_note_comment(selection.comment.lines[index+1]) then
-
-        -- Get the lines for the section (API zero indexed).
-        section.lines = vim.api.nvim_buf_get_lines(0, section.line_start-1, section.line_end, false)
-
-        -- Format the current section.
-        if section.note_section then
-          format_note_section(section)
-        else
-          format_normal_section(section)
-        end
-
-        -- Update the buffer with the formatted lines. Any additional lines
-        -- that were added due to text reflow will be inserted before the start
-        -- of the next section. The current section line end has also been
-        -- updated to reflect the additional lines that were added to the
-        -- section.
-        vim.api.nvim_buf_set_lines(0, section.line_start-1, section.line_end, false, section.updated_lines)
-
-        -- If this isn't the last line in the selection.
-        if index ~= #selection.comment.lines then
-
-          -- If we are still processing the normal section.
-          if not section.note_section then
-
-            -- If the next section is a note section.
-            if is_note_comment(selection.comment.lines[index+1]) then
-
-              -- Flag that additional sections are note sections.
-              section.note_section = true
-            end
-          end
-
-        end
-
-        -- If this is not the last line of the selection, then update the line
-        -- start and line end for the next section.
-        if index ~= #selection.comment.lines then
-
-          -- Process the next section in the selection. The format functions
-          -- already updated the section line end if additional lines were
-          -- added to the section.
-          section.line_start = section.line_end + 1
-          section.line_end   = section.line_start
-
-        end
-
-      else
-
-        -- Process the next line as part of the current section.
-        section.line_end = section.line_end + 1
-
-      end
-
-    else
-
-      -- Found a line in the selection that is not a comment we will terminate
-      -- and not process the current section.  Any previous sections that were
-      -- formatted up to this point will remain formatted.
-      break
-    end
-
-  end
-
-  -- Make sure the caller knows if the end of the comment block has changed.
-  selection.comment.line_end = section.line_end
-
-  -- If this was a command, then we need to restore
-  -- the user options.
-  if restore then
-    restore_options(options)
-  end
-
-end
-
--- Formats all ss1 comments in the selection.
-function M.format_all_comments()
-
-  local selection
-  local options = {}
-
-  backup_options(options)
-
-  -- Get the visual selection.
-  selection            = {}
-  selection.line_start = unpack(vim.api.nvim_buf_get_mark(0, '<'))
-  selection.line_end   = unpack(vim.api.nvim_buf_get_mark(0, '>'))
-
-  -- Get the lines from the selection (API zero indexed).
-  selection.lines = vim.api.nvim_buf_get_lines(0, selection.line_start-1, selection.line_end, false)
-
-  -- Clear the visual selection.
-  vim.api.nvim_feedkeys(vim.api.nvim_eval('"\\<ESC>"'), 'x', false)
-
-  -- If the visual selection start is not in order of
-  -- increasing line order swap them. This may happen if
-  -- the user explicitly made the visual selection.
-  if selection.line_start > selection.line_end then
-    selection.line_start, selection.line_end = selection.line_end, selection.line_start
-  end
-
-  -- If this function is called, then the selection is the only comment that
-  -- will be formatted.
-  selection.comment             = {}
-  selection.comment.line_start  = selection.line_start
-  selection.comment.line_end    = selection.line_start
-  selection.comment.bad_comment = false
-
-  -- Neovim Lua currently only supports Lua 5.1.
-  table.unpack = table.unpack or unpack
-
-  -- Process the comment.
-  local line
-  local index = 1
-  while index <= #selection.lines do
-
-    -- Get the current line.
-    line = selection.lines[index]
-
-    -- If the current line is a comment, then this is the start of a comment
-    -- block.
-    if is_comment(line) then
-
-      -- Flag that we have not found a bad comment for the current comment
-      -- block.
-      selection.comment.bad_comment = false
-
-      -- If the current line is a bad comment
-      if is_bad_comment(line) then
-        selection.comment.bad_comment = true
-      end
-
-      -- If this is not the last line, then we need to find the end of the
-      -- comment block.
-      if index ~= #selection.lines then
-
-        -- Start with the next line and find the last line of the comment
+        -- If the current line is a comment, then this is the start of a comment
         -- block.
-        local lines = {table.unpack(selection.lines, index + 1)}
+        if is_comment(line) then
 
-        for index2, line2 in ipairs(lines) do
+            -- Flag that we have not found a bad comment for the current comment
+            -- block.
+            selection.comment.bad_comment = false
 
-          -- If the current line is a comment, then we have not found the end
-          -- of the comment block.
-          if is_comment(lines[index2]) then
-
-            -- If the current line is a bad comment, then we need to flag it, but
-            -- this not the end of the comment block so we need to continue
-            -- looking for the end of the comment block.
-            if is_bad_comment(line2) then
-
-              selection.comment.bad_comment = true
+            -- If the current line is a bad comment
+            if is_bad_comment(line) then
+                selection.comment.bad_comment = true
             end
 
-            -- Update the end of the comment block.
-            selection.comment.line_end = selection.comment.line_end + 1
-
-          else
-
-            -- Store the current line end so that if additional lines are added
-            -- we can determine how many were added. The format_comment function
-            -- will update the line of the comment block if it changes.
-            local NewLineCount = selection.comment.line_end
-
-            -- Only format the comment block if we determined that it contains
-            -- a line that is a bad comment.
-            if selection.comment.bad_comment then
-
-              -- Get the lines from the selection (API zero indexed).
-              selection.comment.lines = vim.api.nvim_buf_get_lines(0, selection.comment.line_start-1, selection.comment.line_end, false)
-
-              M.format_comment(selection, options)
-
-              -- Set the number of lines that were added after the comment
-              -- block was formatted.
-              NewLineCount = selection.comment.line_end - NewLineCount
-
-            end
-
-            -- Since we processed additional lines we need to update the main
-            -- loop to skip over lines that we already processed in the inner
-            -- loop.
-            index = index + index2
-
-            -- If there are more lines in the visual selection, then there may
-            -- be another comment block that needs to be formatted.
+            -- If this is not the last line, then we need to find the end of the
+            -- comment block.
             if index ~= #selection.lines then
 
-              -- Next comment block should start after the current line
-              -- (non-comment) that was just processed and marked the end of
-              -- the current comment block.
-              selection.comment.line_start = selection.comment.line_end + 2
-              selection.comment.line_end   = selection.comment.line_start
+                -- Start with the next line and find the last line of the comment
+                -- block.
+                local lines = {table.unpack(selection.lines, index + 1)}
+
+                for index2, line2 in ipairs(lines) do
+
+                    -- If the current line is a comment, then we have not found the end
+                    -- of the comment block.
+                    if is_comment(lines[index2]) then
+
+                        -- If the current line is a bad comment, then we need to flag it, but
+                        -- this not the end of the comment block so we need to continue
+                        -- looking for the end of the comment block.
+                        if is_bad_comment(line2) then
+
+                            selection.comment.bad_comment = true
+                        end
+
+                        -- Update the end of the comment block.
+                        selection.comment.line_end = selection.comment.line_end + 1
+
+                    else
+
+                        -- Store the current line end so that if additional lines are added
+                        -- we can determine how many were added. The format_comment function
+                        -- will update the line of the comment block if it changes.
+                        local NewLineCount = selection.comment.line_end
+
+                        -- Only format the comment block if we determined that it contains
+                        -- a line that is a bad comment.
+                        if selection.comment.bad_comment then
+
+                            -- Get the lines from the selection (API zero indexed).
+                            selection.comment.lines = vim.api.nvim_buf_get_lines(0, selection.comment.line_start-1, selection.comment.line_end, false)
+
+                            M.format_comment(selection, options)
+
+                            -- Set the number of lines that were added after the comment
+                            -- block was formatted.
+                            NewLineCount = selection.comment.line_end - NewLineCount
+
+                        end
+
+                        -- Since we processed additional lines we need to update the main
+                        -- loop to skip over lines that we already processed in the inner
+                        -- loop.
+                        index = index + index2
+
+                        -- If there are more lines in the visual selection, then there may
+                        -- be another comment block that needs to be formatted.
+                        if index ~= #selection.lines then
+
+                            -- Next comment block should start after the current line
+                            -- (non-comment) that was just processed and marked the end of
+                            -- the current comment block.
+                            selection.comment.line_start = selection.comment.line_end + 2
+                            selection.comment.line_end   = selection.comment.line_start
+                        end
+
+                        -- Continue processing lines in the visual selection.
+                        break
+
+                    end
+                end
+            else
+
+                -- The line end for the comment block has already been set to start for
+                -- this case.
+
+                -- Only format the comment block if we determined that it is a bad
+                -- comment.
+                if selection.comment.bad_comment then
+
+                    -- Get the lines from the selection (API zero indexed).
+                    selection.comment.lines = vim.api.nvim_buf_get_lines(0, selection.comment.line_start-1, selection.comment.line_end, false)
+
+                    M.format_comment(selection, options)
+                end
             end
 
-            -- Continue processing lines in the visual selection.
-            break
+        else
 
-          end
+            -- Keep incrementing the next line as the comment start until we find a
+            -- comment.
+            selection.comment.line_start = selection.comment.line_start + 1
+            selection.comment.line_end   = selection.comment.line_start
+
         end
-      else
 
-        -- The line end for the comment block has already been set to start for
-        -- this case.
-
-        -- Only format the comment block if we determined that it is a bad
-        -- comment.
-        if selection.comment.bad_comment then
-
-          -- Get the lines from the selection (API zero indexed).
-          selection.comment.lines = vim.api.nvim_buf_get_lines(0, selection.comment.line_start-1, selection.comment.line_end, false)
-
-          M.format_comment(selection, options)
-        end
-      end
-
-    else
-
-      -- Keep incrementing the next line as the comment start until we find a
-      -- comment.
-      selection.comment.line_start = selection.comment.line_start + 1
-      selection.comment.line_end   = selection.comment.line_start
-
+        -- Get the next line in the visual selection.
+        index = index + 1
     end
 
-    -- Get the next line in the visual selection.
-    index = index + 1
-  end
-
-  -- Restore user options.
-  restore_options(options)
+    -- Restore user options.
+    restore_options(options)
 end
 
 return M
